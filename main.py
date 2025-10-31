@@ -321,8 +321,8 @@ def run_td3(td3: TD3):
 
             # --- build TD target components ---
             with torch.no_grad():
-                # next actions using target actor at t=1
-                td3.target_actor(rb_workspace, t=1)
+                # next actions using CURRENT actor at t=1 (like teacher's code)
+                td3.actor(rb_workspace, t=1)
                 next_actions = rb_workspace["action"][1].to(device)
 
                 # add clipped noise to next_actions (TD3 policy smoothing)
@@ -342,7 +342,8 @@ def run_td3(td3: TD3):
                 q_target_min = torch.min(q1_target, q2_target)
 
                 rewards = rb_workspace["env/reward"][0].view(-1, 1).to(device)  # r_t at t=0
-                dones = rb_workspace["env/done"][0].view(-1, 1).float().to(device)
+                # Use env/done which includes both terminated and truncated
+                dones = rb_workspace["env/done"][1].float().unsqueeze(-1)
                 must_bootstrap = (1.0 - dones)
 
             # --- critics update using current Q at t=0 ---
@@ -430,25 +431,27 @@ params = {
         "seed": 2,
         "max_grad_norm": 0.5,
         "n_envs": 1,
-        "n_steps": 5000,
+        "n_steps": 100,  # CRITICAL: Match teacher's collection frequency
         "nb_evals": 10,
         "discount_factor": 0.98,
         "buffer_size": 2e5,
         "batch_size": 64,
         "tau_target": 0.05,
         "eval_interval": 2000,
-        "max_epochs": 400,
+        "max_epochs": 10000,  # More epochs since we collect less per epoch
         "learning_starts": 10000,
         "action_noise": 0.1,
         "architecture": {
-            "actor_hidden_size": [256, 256],
-            "critic_hidden_size": [256, 256],
+            # "actor_hidden_size": [256, 256],
+            # "critic_hidden_size": [256, 256],
+            "actor_hidden_size": [1000, 1000],
+            "critic_hidden_size": [1000, 1000],
         },
     },
     "gym_env": {
-        # "env_name": "LunarLander-v3",
-        # "env_args": {"continuous": True}
-        "env_name": "CartPoleContinuous-v1",
+        "env_name": "LunarLander-v3",
+        "env_args": {"continuous": True}
+        # "env_name": "CartPoleContinuous-v1",
     },
     "actor_optimizer": {
         "classname": "torch.optim.Adam",
@@ -472,9 +475,9 @@ torch.save(td3.actor.state_dict(), "td3_actor.pth")
 actor = td3.actor
 actor.eval()
 
-# env = gym.make("LunarLander-v3", continuous=True, render_mode="human")
+env = gym.make("LunarLander-v3", continuous=True, render_mode="human")
+# env = gym.make("CartPoleContinuous-v1", render_mode="human")
 
-env = gym.make("CartPoleContinuous-v1", render_mode="human")
 obs, info = env.reset()
 done = False
 
