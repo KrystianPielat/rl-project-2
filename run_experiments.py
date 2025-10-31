@@ -40,8 +40,8 @@ def run_single_experiment(config_name, wrappers, params, seed, results_dir):
     try:
         run_td3(td3)
     except KeyboardInterrupt:
-        print(f"Interrupted: {config_name} seed {seed}")
-        return
+        print(f"\nInterrupted: {config_name} seed {seed}")
+        raise
 
     model_path = results_dir / f"{config_name}_seed{seed}.pth"
     torch.save(td3.actor.state_dict(), model_path)
@@ -52,8 +52,8 @@ def run_experiments(configurations, base_params, seeds, results_dir):
     results_dir = Path(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    for config_name, wrappers in configurations.items():
-        for seed in seeds:
+    for seed in seeds:
+        for config_name, wrappers in configurations.items():
             run_single_experiment(config_name, wrappers, base_params, seed, results_dir)
 
     print("\nAll experiments complete. Run visualize_results.py to see plots.")
@@ -117,4 +117,7 @@ if __name__ == "__main__":
 
     results_dir = Path(__file__).parent / "experiment_results"
 
-    run_experiments(configurations, base_params, seeds, results_dir)
+    try:
+        run_experiments(configurations, base_params, seeds, results_dir)
+    except KeyboardInterrupt:
+        print("\n\nExperiments stopped by user.")
