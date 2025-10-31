@@ -50,7 +50,9 @@
 
 \section{Introduction}
 
-In this project, we use the BBRL framework to study the effects of partial observability on the continuous-action version of the \textit{LunarLander-v3} environment and \textit{CartPoleContinuous-v1} environment with the TD3 algorithm.\\
+In this project, we use the BBRL framework to study the effects of partial observability on the continuous-action version of the \textit{LunarLander-v3} environment and \textit{CartPoleContinuous-v1} environment with the TD3 algorithm. All of the code is available on \href{https://github.com/KrystianPielat/rl-project-2/tree/master}{github}. \newline
+
+
 
 To simulate partial observability, we implemented dedicated env wrappers. We investigate if extending the input to the agent’s policy and critic with a memory of previous states helps to combat the challenges of partial observability. Additionally, we explore the impact of using action chunks(sequences of consecutive actions) rather than single-step actions, achieved through temporal extension wrappers.\\
 
@@ -111,7 +113,7 @@ To systematically evaluate the impact of partial observability and temporal exte
 
 Apart from these main configurations, we also tested several combined setups to evaluate how \textit{observation memory} and \textit{action chunking} could mitigate the loss of information caused by partial observability.
 
-Each configuration was trained for 1000 episodes using 5 random seeds (1-5) to ensure statistical robustness. All experiments used identical TD3 hyperparameters (different set for LunarLander and different for CartPole, they can be found \href{https://github.com/KrystianPielat/rl-project-2/blob/master/run_experiments.py}{here}).
+Each configuration was trained for 1000 episodes using 5 random seeds (1-5) to ensure statistical robustness. All experiments used identical TD3 hyperparameters (different set for LunarLander and different for CartPole, they can be found \href{https://github.com/KrystianPielat/rl-project-2/blob/master/run_experiments_carpole.py}{here} and \href{https://github.com/KrystianPielat/rl-project-2/blob/master/run_experiments_lunarlander.py}{here}).
 
 \subsection{Results and Analysis}
 
