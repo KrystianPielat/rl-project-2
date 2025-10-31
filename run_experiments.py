@@ -77,7 +77,7 @@ if __name__ == "__main__":
             "batch_size": 264,
             "tau_target": 0.05,
             "eval_interval": 2000,
-            "max_epochs": 100,
+            "max_epochs": 1000,
             "learning_starts": 1000,
             "action_noise": 0.1,
             "policy_delay": 2,
