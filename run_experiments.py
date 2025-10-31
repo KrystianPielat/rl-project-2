@@ -100,15 +100,15 @@ if __name__ == "__main__":
     }
 
     configurations = {
-        "baseline": [],
-        "action_ext": [
+        "full_observability": [],
+        "partial_observability": [
             (FeatureFilterWrapper, [3], {}),
             (FeatureFilterWrapper, [2], {}),
         ],
-        "obs_memory": [
+        "memory": [
             (ObsTimeExtensionWrapper, [], {}),
         ],
-        "obs_memory_action_ext": [
+        "chunked_actions": [
             (ActionTimeExtensionWrapper, [], {"num_actions": 3}),
         ],
     }
