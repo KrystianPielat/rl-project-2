@@ -1,34 +1,31 @@
 # TD3 on CartPoleContinuous-v1 with configurable wrappers
 
+import copy
+import math
 import os
-import warnings
 import subprocess
 import sys
+import time
+import warnings
 from pathlib import Path
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-warnings.filterwarnings('ignore', category=UserWarning, module='pygame')
-warnings.filterwarnings('ignore', message='pkg_resources is deprecated')
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-
-import copy
-import numpy as np
-import gymnasium as gym
-import math
 import bbrl_gymnasium  # noqa: F401
+import bbrl_utils
+import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn as nn
-from bbrl.agents import Agent, Agents, TemporalAgent
+from bbrl.agents import Agent, Agents
+from bbrl.visu.plot_policies import plot_policy
 from bbrl_utils.algorithms import EpochBasedAlgo
 from bbrl_utils.nn import build_mlp, setup_optimizer
-from bbrl.visu.plot_policies import plot_policy
 from omegaconf import OmegaConf
 
-from bbrl_algos.models.exploration_agents import AddGaussianNoise
-import time
-
-import bbrl_utils
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+warnings.filterwarnings("ignore", category=UserWarning, module="pygame")
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 bbrl_utils.setup()
 
@@ -41,8 +38,10 @@ print(f"Using device: {device}")
 # CONFIGURABLE WRAPPERS
 # =============================================================================
 
+
 class FeatureFilterWrapper(gym.Wrapper):
     """Remove a single feature at index `feature_index` from the observation vector."""
+
     def __init__(self, env, feature_index, *args, **kwargs):
         super().__init__(env, *args, **kwargs)
         self.feature_index = int(feature_index)
@@ -82,9 +81,7 @@ class ObsTimeExtensionWrapper(gym.Wrapper):
         low_extended = np.concatenate([low, low])
         high_extended = np.concatenate([high, high])
         self.observation_space = gym.spaces.Box(
-            low=low_extended,
-            high=high_extended,
-            dtype=env.observation_space.dtype
+            low=low_extended, high=high_extended, dtype=env.observation_space.dtype
         )
         self.obs_shape = shape[0]
 
@@ -111,13 +108,11 @@ class ActionTimeExtensionWrapper(gym.Wrapper):
         low_action = np.tile(low, num_actions)
         high_action = np.tile(high, num_actions)
         if len(shape) == 0:
-            shape_action = (num_actions,)
+            pass
         else:
-            shape_action = (shape[0] * num_actions,)
+            (shape[0] * num_actions,)
         self.action_space = gym.spaces.Box(
-            low=low_action,
-            high=high_action,
-            dtype=env.action_space.dtype
+            low=low_action, high=high_action, dtype=env.action_space.dtype
         )
         self.num_actions = num_actions
         self.inner_action_size = shape[0] if len(shape) > 0 else 1
@@ -146,6 +141,7 @@ def apply_wrappers(env, wrappers):
 # -----------------------------------------
 # TD3 components
 # -----------------------------------------
+
 
 class ContinuousQAgent(Agent):
     def __init__(self, state_dim, hidden_layers, action_dim):
@@ -177,6 +173,7 @@ class ContinuousDeterministicActor(Agent):
 
 class AddOUNoise(Agent):
     """Ornstein-Uhlenbeck process noise for actions."""
+
     def __init__(self, std_dev, theta=0.15, dt=1e-2):
         super().__init__()
         self.theta = theta
@@ -215,13 +212,13 @@ def soft_update(target, source, tau):
 class TD3(EpochBasedAlgo):
     def __init__(self, cfg, wrappers):
         super().__init__(cfg)
-        
+
         for i in range(len(self.train_env.envs)):
             self.train_env.envs[i] = apply_wrappers(self.train_env.envs[i], wrappers)
-        
+
         for i in range(len(self.eval_env.envs)):
             self.eval_env.envs[i] = apply_wrappers(self.eval_env.envs[i], wrappers)
-        
+
         # Refresh spaces from wrapped environments
         self.train_env.observation_space = self.train_env.envs[0].observation_space
         self.eval_env.observation_space = self.eval_env.envs[0].observation_space
@@ -229,23 +226,27 @@ class TD3(EpochBasedAlgo):
         self.eval_env.action_space = self.eval_env.envs[0].action_space
 
         obs_size, act_size = self.train_env.get_obs_and_actions_sizes()
-        
+
         # Print configuration
         wrapper_names = [w[0].__name__ for w in wrappers] if wrappers else ["None"]
         print(f"Wrappers: {' -> '.join(wrapper_names)}")
         print(f"  obs_size={obs_size}, act_size={act_size}")
-        
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.critic_1 = ContinuousQAgent(
             obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
         ).with_prefix("critic-1/")
-        self.target_critic_1 = copy.deepcopy(self.critic_1).with_prefix("target-critic-1/").to(device)
+        self.target_critic_1 = (
+            copy.deepcopy(self.critic_1).with_prefix("target-critic-1/").to(device)
+        )
 
         self.critic_2 = ContinuousQAgent(
             obs_size, cfg.algorithm.architecture.critic_hidden_size, act_size
         ).with_prefix("critic-2/")
-        self.target_critic_2 = copy.deepcopy(self.critic_2).with_prefix("target-critic-2/").to(device)
+        self.target_critic_2 = (
+            copy.deepcopy(self.critic_2).with_prefix("target-critic-2/").to(device)
+        )
 
         self.actor = ContinuousDeterministicActor(
             obs_size, cfg.algorithm.architecture.actor_hidden_size, act_size
@@ -285,7 +286,9 @@ def run_td3(td3: TD3):
                 td3.target_actor(rb_workspace, t=1)
                 next_actions = rb_workspace["action"][1].to(device)
 
-                noise = torch.normal(0, policy_noise, size=next_actions.shape, device=next_actions.device)
+                noise = torch.normal(
+                    0, policy_noise, size=next_actions.shape, device=next_actions.device
+                )
                 noise = noise.clamp(-noise_clip, noise_clip)
                 next_actions = (next_actions + noise).clamp(-1.0, 1.0)
                 rb_workspace.set("action", 1, next_actions)
@@ -299,7 +302,7 @@ def run_td3(td3: TD3):
 
                 rewards = rb_workspace["env/reward"][0].view(-1, 1).to(device)
                 dones = rb_workspace["env/done"][1].float().unsqueeze(-1)
-                must_bootstrap = (1.0 - dones)
+                must_bootstrap = 1.0 - dones
 
             td3.critic_1(rb_workspace, t=0)
             td3.critic_2(rb_workspace, t=0)
@@ -329,7 +332,7 @@ def run_td3(td3: TD3):
             if update_step % policy_delay == 0:
                 obs = rb_workspace["env/env_obs"][0].to(device)
                 actor_action = td3.actor.model(obs)
-                
+
                 obs_act = torch.cat((obs, actor_action), dim=1)
                 q_for_actor = td3.critic_1.model(obs_act).squeeze(-1)
                 actor_loss = -torch.mean(q_for_actor)
@@ -347,10 +350,14 @@ def run_td3(td3: TD3):
         if td3.evaluate():
             if td3.cfg.plot_agents:
                 plot_policy(
-                    td3.actor, td3.eval_policy, td3.best_reward,
-                    str(td3.base_dir / "plots"), td3.cfg.gym_env.env_name,
-                    stochastic=False
+                    td3.actor,
+                    td3.eval_policy,
+                    td3.best_reward,
+                    str(td3.base_dir / "plots"),
+                    td3.cfg.gym_env.env_name,
+                    stochastic=False,
                 )
+
 
 # -----------------------------------------
 # Launch
@@ -361,7 +368,9 @@ outputs_dir.mkdir(parents=True, exist_ok=True)
 try:
     subprocess.Popen(
         [sys.executable, "-m", "tensorboard.main", "--logdir", str(outputs_dir.absolute())],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
     )
 except Exception:
     pass
@@ -424,7 +433,9 @@ except KeyboardInterrupt:
     pass
 
 # Save model with descriptive name
-wrapper_names = [w[0].__name__.replace("Wrapper", "").lower() for w in wrappers] if wrappers else ["full"]
+wrapper_names = (
+    [w[0].__name__.replace("Wrapper", "").lower() for w in wrappers] if wrappers else ["full"]
+)
 model_name = f"td3_actor_{'_'.join(wrapper_names)}.pth"
 
 torch.save(td3.actor.state_dict(), model_name)
@@ -447,4 +458,3 @@ while not done:
     time.sleep(0.01)
 
 env.close()
-

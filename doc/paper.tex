@@ -1,0 +1,124 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[a4paper,top=3cm,bottom=3cm,left=3cm,right=3cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{amsmath}
+
+\hypersetup{
+	colorlinks=true,
+	linkcolor=black,
+	filecolor=magenta,
+	urlcolor=cyan,
+}
+
+\begin{document}
+\thispagestyle{empty}
+
+\begin{center}
+	{\bfseries \LARGE Reinforcement Learning \\[2mm]
+	Mini-Project-2}
+
+	\vfill
+
+	{\large
+	\textbf{Pielat Krystian} \\[2mm]
+	\textbf{Sangineto Marina} \\[2mm]
+	\textbf{Sauvenay Antoine}
+	}
+
+	\vfill
+
+	\includegraphics[width=0.35\textwidth]{plots/sorbonne.png}
+
+	\vfill
+
+	{\large Sorbonne Université} \\[2mm]
+	{\large 2025}
+\end{center}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+In this project, we use the BBRL framework to study the effects of partial observability on the continuous-action version of the LunarLander-v3 environment with the TD3 algorithm.\\
+
+To simulate partial observability, we design dedicated wrappers. We investigate whether extending the input to the agent’s policy and critic with a memory of previous states helps mitigate the challenges of partial observability. Additionally, we explore the impact of using action chunks—sequences of consecutive actions—rather than single-step actions, achieved through temporal extension wrappers.\\
+
+The study focuses on a single performance metric: the median reward. This metric ranges up to a maximum of 200, where lower values indicate poorer landing performance. In other words, a reward of 200 corresponds to a perfect landing, while lower rewards reflect mistakes during the landing process.
+
+\section{Wrappers}
+
+The FeatureFilterWrapper removes a specific feature from the returned observation during calls to the \texttt{reset()} and \texttt{step(action)} functions. The feature to be removed is specified as an index when constructing the wrapper object.
+
+For example, to filter out the x and y velocities of the lander in the LunarLander-v3 environment, the wrapper can be applied multiple times as follows:
+\[
+\texttt{env = FeatureFilterWrapper(FeatureFilterWrapper(inner\_env, X), Y)}
+\]
+where \texttt{inner\_env} refers to the LunarLander-v3 environment, and \texttt{X} and \texttt{Y} represent the indices of the features to be filtered out.
+
+It is important to filter features in the correct order, as removing a feature alters the indices of all subsequent features. A lambda function can be used to add the wrapper in the right order:
+\[
+\texttt{lambda env: FeatureFilterWrapper(env, 3)}
+\]
+This approach is useful for dynamically modifying the environment's observation space.
+
+\subsection{Exercise 1: Implementing the \texttt{FeatureFilterWrapper} Class}
+
+
+The purpose of the \texttt{FeatureFilterWrapper} is to simulate partial observability in the LunarLander-v3 environment by removing selected features from the observation vector. This allows the evaluation of TD3’s robustness when operating with incomplete state information.
+
+The wrapper modifies the \texttt{reset()} and \texttt{step(action)} functions to filter out the specified features before returning observations. Because this alters the observation dimensionality, the corresponding \texttt{Box} space is redefined to ensure compatibility with the policy and critic networks:
+\[
+\text{new\_shape} = \text{original\_shape} - \text{number\_of\_removed\_features}
+\]
+
+This approach provides a clean and modular way to emulate missing sensor data. Care must be taken when selecting feature indices, since removing one feature shifts the others. A practical solution is to nest wrappers or use lambda functions to preserve index consistency, for example:
+\[
+\texttt{env = FeatureFilterWrapper(FeatureFilterWrapper(inner\_env, 3), 4)}
+\]
+
+
+\subsection{ObsTimeExtensionWrapper and ActionTimeExtensionWrapper}
+
+The \texttt{ObsTimeExtensionWrapper} and \texttt{ActionTimeExtensionWrapper} are temporal wrappers designed to handle partial observability and improve temporal reasoning.
+
+The \texttt{ObsTimeExtensionWrapper} augments each observation by concatenating a fixed number of past states, giving the agent short-term memory to infer hidden information such as velocities or dynamic context. This buffer of recent observations increases the input dimension of the policy and critic networks and improves performance when the current state alone is insufficient to represent the environment.
+
+The \texttt{ActionTimeExtensionWrapper} changes how actions are executed: instead of issuing one action per step, the agent outputs a short sequence of consecutive actions that the environment executes automatically. This lowers the decision frequency, enforces temporal consistency, and stabilizes learning by smoothing policy variations.
+
+Together, these wrappers provide complementary ways to integrate temporal information—one through the input, the other through the output—allowing TD3 to better learn under partially observable conditions.
+
+
+\section{Exercise 3: Results and TensorBoard Visualization}
+
+In this exercise, we aim to investigate the performance of the agent in the LunarLander-v3 environment while modifying the hyper-parameters. We compare the results obtained using the extended input and output mechanisms with the baseline performance of the agent.
+
+\subsection{Exercise 3: Architectural Choices}
+
+For this exercise, the TD3 (Twin Delayed Deep Deterministic Policy Gradient) algorithm was used in the continuous version of the LunarLander-v3 environment, as required. TD3 was selected for its robustness and stability in continuous control problems, relying on twin critics, delayed policy updates, and target smoothing to reduce overestimation bias.
+
+Beyond these mandatory components, some architectural choices were left open. For exploration, we employed Ornstein–Uhlenbeck noise using the \texttt{AddOUNoise} agent. This temporally correlated noise model is particularly suitable for continuous control tasks, as it produces smoother exploration trajectories compared to uncorrelated Gaussian noise. By introducing momentum in the perturbations, it encourages the agent to explore nearby actions more consistently, which helps avoid unstable or erratic behaviors. The noise parameters, such as mean reversion rate and standard deviation, were tuned empirically to achieve a good balance between exploration and exploitation.
+
+In addition, the implementation used modular agents (\texttt{SAgents}) to maintain a clean and flexible structure. Each agent was responsible for a specific role within the TD3 pipeline — such as policy computation, critic evaluation, or data collection — allowing for easier experimentation with wrappers and temporal extensions. This modular design also facilitated testing different architectural variants while keeping the core algorithm stable and reusable.
+
+\subsection{Explanation of Results}
+
+
+\subsection{TensorBoard Results}
+
+\section{Exercise 4: Study on limitation of the environments parameters}
+
+\section{Conclusion}
+
+
+
+
+\end{document}
