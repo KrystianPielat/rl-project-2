@@ -1,6 +1,8 @@
 \documentclass[12pt, a4paper]{article}
 
-\usepackage[a4paper,top=3cm,bottom=3cm,left=3cm,right=3cm]{geometry}
+%\usepackage[a4paper,top=3cm,bottom=3cm,left=3cm,right=3cm]{geometry}
+\usepackage[a4paper,top=2.3cm,bottom=2.3cm,left=2.5cm,right=2.5cm]{geometry}
+
 \usepackage[T1]{fontenc}
 \usepackage{graphicx}
 \graphicspath{{figures/}}
@@ -28,13 +30,13 @@
 
 	{\large
 	\textbf{Pielat Krystian} \\[2mm]
-	\textbf{Sangineto Marina} \\[2mm]
-	\textbf{Sauvenay Antoine}
+	\textbf{Sauvenay Antoine} \\[2mm]
+	\textbf{Sangineto Marina}
 	}
 
 	\vfill
 
-	%\includegraphics[width=0.35\textwidth]{plots/sorbonne.png}
+	\includegraphics[width=0.35\textwidth]{sorbonne.png}
 
 	\vfill
 
@@ -116,14 +118,14 @@ Each configuration was trained for 1000 episodes using 5 random seeds (1-5) to e
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=1\linewidth]{results_lunar_lander_basic}
-	\caption{Results without combining wrappers.}
+	\caption{Results without combining wrappers on \textit{LunarLander-v3}.}
 	\label{fig:resultslunarlanderbasic}
 \end{figure}
 
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=1\linewidth]{results_lunar_lander_combined}
-	\caption{Results of partial observability configurations combined with other wrappers.}
+	\caption{Results of partial observability configurations combined with other wrappers on \textit{LunarLander-v3}.}
 	\label{fig:resultslunarlandercombined}
 \end{figure}
 
@@ -152,10 +154,31 @@ Based on figure \ref{fig:resultslunarlandercombined} it seems that combinations 
 \subsubsection{Statistical Significance}
 We noticed that the results have relatively high variance. Based on the data we collected it's difficult to conclusively say which algorithms perform best, due to too little seeds and training steps. The plots contains 95\% confidence intervals to give more insight into the variability in the data (the series are means  of configurations across seeds).
 
+\subsection{Additional Study on CarPoleContinuous-v1}
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\linewidth]{results_car_pole_basic}
+	\caption{Results without combining wrappers on \textit{CarPoleContinuous-v1}.}
+	\label{fig:resultscarpolebasic}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=1\linewidth]{results_car_pole_combined}
+	\caption{Results of partial observability configurations combined with other wrappers on \textit{CarPoleContinuous-v1}.}
+	\label{fig:resultscarpolecombined}
+\end{figure}
+
+\subsubsection{Results Discussion}
+Looking at figure \ref{fig:resultscarpolebasic}, the model’s learning process appears even more stable in this environment, showing a steady increase in average reward. The model was clearly more sensitive to missing velocity information under the \textit{partial\_observation} configuration, plateauing well below the other setups. Interestingly, unlike in \textit{LunarLander-v3}, the \textit{chunked\_actions} configuration performed very well, enriching the \textit{full\_observability} configuration with more information and reaching results possibly slightly better to \textit{full\_observability}. The \textit{memory} configuration did not lead to improvements and in some cases even reduced performance. \newline
+
+On figure  \ref{fig:resultscarpolecombined} we see that \textit{memory} helped the model to infer the missing information about velocity based on knowledge about position in previous state and therefore compensated the reduce in performance coming from \textit{partial\_observability}. The \textit{partial\_obs+memory} resulted in performance very similar to \textit{full\_observability}.
+
+
+
 \section{Conclusion}
 
-This study systematically investigated the effects of partial observability on TD3 learning in the LunarLander-v3 environment and evaluated two temporal extension strategies for mitigating performance degradation.
-
+This project examined how partial observability influences TD3 performance in continuous-control environments and how temporal extensions can help mitigate related challenges. In both environments, removing velocity information led to slower learning and lower final rewards, confirming that access to full state dynamics is crucial for effective control. We presented the performance comparison between different configurations and combined configurations, showing how the wrappers helped recover part of the lost performance by enabling the agent to infer missing information from past observations. The \texttt{ActionTimeExtensionWrapper} produced mixed results, showing clear benefits in some cases but limited impact in others, indicating that its effectiveness depends on the environment’s dynamics and temporal dependencies. In many runs, the algorithms plateaued early, suggesting that they could likely be further improved through more advanced optimization techniques such as adaptive learning rate scheduling, decay strategies, or other gradient-based adjustments. Future experiments should also include more training epochs, additional seeds, and refined optimization setups to better assess convergence behavior and ensure more statistically reliable conclusions.
 
 
 
